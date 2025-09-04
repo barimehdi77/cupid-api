@@ -12,8 +12,8 @@ var Logger *zap.Logger
 
 // InitLogger initializes the global logger instanceß
 func InitLogger() error {
-	// Get log level from environment (default: info)
-	logLevel := strings.ToLower(env.GetEnvString("LOG_LEVEL", "info"))
+	// Get log level from environment (default: debug)
+	logLevel := strings.ToLower(env.GetEnvString("LOG_LEVEL", "debug"))
 
 	// Get environment (development or production)
 	env := strings.ToLower(env.GetEnvString("GO_ENV", "development"))

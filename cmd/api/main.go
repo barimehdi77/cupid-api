@@ -1,71 +1,21 @@
+// cmd/api/main.go
 package main
 
 import (
 	"fmt"
-	"net/http"
 	"os"
-	"os/signal"
-	"syscall"
 
-	"github.com/barimehdi77/cupid-api/docs"
 	"github.com/barimehdi77/cupid-api/internal/database"
 	"github.com/barimehdi77/cupid-api/internal/env"
 	"github.com/barimehdi77/cupid-api/internal/logger"
-
-	"github.com/gin-gonic/gin"
+	"github.com/barimehdi77/cupid-api/internal/store"
 	"github.com/joho/godotenv"
-	swaggerFiles "github.com/swaggo/files"
-	ginSwagger "github.com/swaggo/gin-swagger"
 	"go.uber.org/zap"
 )
 
-// @title           Cupid API
-// @version         1.0
-// @description     A dating application API built with Go and Gin
-// @termsOfService  http://swagger.io/terms/
-
-// @contact.name   API Support
-// @contact.url    http://www.swagger.io/support
-// @contact.email  support@swagger.io
-
-// @license.name  Apache 2.0
-// @license.url   http://www.apache.org/licenses/LICENSE-2.0.html
-
-// @host      localhost:8080
-// @BasePath  /api/v1
-
-// @securityDefinitions.basic  BasicAuth
-
-// @externalDocs.description  OpenAPI
-// @externalDocs.url          https://swagger.io/resources/open-api/
-
-// PingResponse represents the response structure for ping endpoint
-type PingResponse struct {
-	Message string `json:"message" example:"pong"`
-}
-
-// pingHandler handles the ping endpoint
-// @Summary      Ping endpoint
-// @Description  Health check endpoint that returns pong
-// @Tags         health
-// @Accept       json
-// @Produce      json
-// @Success      200  {object}  PingResponse
-// @Router       /ping [get]
-func pingHandler(c *gin.Context) {
-	logger.Info("Ping endpoint called",
-		zap.String("ip", c.ClientIP()),
-		zap.String("user_agent", c.Request.UserAgent()),
-	)
-	c.JSON(http.StatusOK, gin.H{
-		"message": "pong",
-	})
-}
-
 func main() {
-	// Load environment variables from .env file
+	// Load environment variables
 	if err := godotenv.Load(); err != nil {
-		// Use standard log for this since logger isn't initialized yet
 		fmt.Printf("Warning: Could not load .env file: %v\n", err)
 	}
 
@@ -74,61 +24,30 @@ func main() {
 		fmt.Printf("Failed to initialize logger: %v\n", err)
 		os.Exit(1)
 	}
-
-	// Ensure logger is synced on exit
 	defer logger.Sync()
 
-	// Setup graceful shutdown
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
-	go func() {
-		<-c
-		logger.Info("Shutting down gracefully...")
-		logger.Sync()
-		os.Exit(0)
-	}()
+	// Initialize database
+	db, err := database.NewDB()
+	if err != nil {
+		logger.Fatal("Failed to connect to database", zap.Error(err))
+	}
+	defer db.Close()
 
-	logger.Info("Starting application...")
+	// Initialize storage
+	storage := store.NewStorage(db)
 
-	port := env.GetEnvInt("SERVER_PORT", 8080)
-
-	// Set Gin mode based on environment
-	env := os.Getenv("GO_ENV")
-	if env == "production" {
-		gin.SetMode(gin.ReleaseMode)
+	// Create application instance with dependencies
+	app := &application{
+		config: config{
+			port: env.GetEnvInt("SERVER_PORT", 8080),
+			env:  env.GetEnvString("GO_ENV", "development"),
+		},
+		logger:  logger.Logger,
+		storage: storage,
 	}
 
-	// Create Gin engine without default middleware
-	r := gin.New()
-
-	// Add custom Zap middleware
-	r.Use(logger.GinMiddleware())
-	r.Use(logger.GinRecoveryMiddleware())
-
-	// Connect to database
-	database.ConnectDatabase()
-
-	defer database.Db.Close()
-
-	// Initialize Swagger docs
-	docs.SwaggerInfo.BasePath = "/api/v1"
-
-	// API v1 routes
-	v1 := r.Group("/api/v1")
-	{
-		v1.GET("/ping", pingHandler)
-	}
-
-	// Swagger endpoint
-	r.GET("/docs/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
-
-	logger.Info("Server starting",
-		zap.Int("port", port),
-		zap.String("environment", env),
-	)
-
-	// Start server
-	if err := r.Run(fmt.Sprintf(":%d", port)); err != nil {
-		logger.Fatal("Failed to start server", zap.Error(err))
+	// Start the server
+	if err := app.run(); err != nil {
+		logger.Fatal("Server failed", zap.Error(err))
 	}
 }

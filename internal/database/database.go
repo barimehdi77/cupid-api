@@ -1,3 +1,4 @@
+// internal/database/database.go
 package database
 
 import (
@@ -5,49 +6,38 @@ import (
 	"fmt"
 
 	"github.com/barimehdi77/cupid-api/internal/env"
-	"github.com/barimehdi77/cupid-api/internal/logger"
-
-	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
-	"go.uber.org/zap"
 )
 
-var Db *sql.DB
+type DB struct {
+	*sql.DB
+}
 
-func ConnectDatabase() {
-	err := godotenv.Load()
-	if err != nil {
-		logger.Warn("Could not load .env file", zap.Error(err))
-	}
-
-	// Use the env package for consistency
+func NewDB() (*DB, error) {
+	// Get database configuration
+	driver := env.GetEnvString("DB_DRIVER", "postgres")
 	host := env.GetEnvString("DB_HOST", "localhost")
 	port := env.GetEnvInt("DB_PORT", 5432)
 	user := env.GetEnvString("DB_USER", "root")
 	dbname := env.GetEnvString("DB_NAME", "cupid")
 	password := env.GetEnvString("DB_PASSWORD", "")
 
-	// Set up postgres connection string
 	psqlSetup := fmt.Sprintf("host=%s port=%d user=%s dbname=%s password=%s sslmode=disable",
 		host, port, user, dbname, password)
 
-	logger.Debug("Connecting to database",
-		zap.String("host", host),
-		zap.Int("port", port),
-		zap.String("user", user),
-		zap.String("dbname", dbname),
-	)
-
-	db, err := sql.Open("postgres", psqlSetup)
+	db, err := sql.Open(driver, psqlSetup)
 	if err != nil {
-		logger.Fatal("Failed to connect to database", zap.Error(err))
+		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
 
-	// Test the connection
 	if err := db.Ping(); err != nil {
-		logger.Fatal("Failed to ping database", zap.Error(err))
+		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 
-	Db = db
-	logger.Info("Successfully connected to database!")
+	return &DB{DB: db}, nil
+}
+
+// Add helper methods if needed
+func (db *DB) Close() error {
+	return db.DB.Close()
 }
