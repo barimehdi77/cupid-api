@@ -7,14 +7,60 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/barimehdi77/cupid-api/docs"
 	"github.com/barimehdi77/cupid-api/internal/database"
 	"github.com/barimehdi77/cupid-api/internal/env"
 	"github.com/barimehdi77/cupid-api/internal/logger"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 	"go.uber.org/zap"
 )
+
+// @title           Cupid API
+// @version         1.0
+// @description     A dating application API built with Go and Gin
+// @termsOfService  http://swagger.io/terms/
+
+// @contact.name   API Support
+// @contact.url    http://www.swagger.io/support
+// @contact.email  support@swagger.io
+
+// @license.name  Apache 2.0
+// @license.url   http://www.apache.org/licenses/LICENSE-2.0.html
+
+// @host      localhost:8080
+// @BasePath  /api/v1
+
+// @securityDefinitions.basic  BasicAuth
+
+// @externalDocs.description  OpenAPI
+// @externalDocs.url          https://swagger.io/resources/open-api/
+
+// PingResponse represents the response structure for ping endpoint
+type PingResponse struct {
+	Message string `json:"message" example:"pong"`
+}
+
+// pingHandler handles the ping endpoint
+// @Summary      Ping endpoint
+// @Description  Health check endpoint that returns pong
+// @Tags         health
+// @Accept       json
+// @Produce      json
+// @Success      200  {object}  PingResponse
+// @Router       /ping [get]
+func pingHandler(c *gin.Context) {
+	logger.Info("Ping endpoint called",
+		zap.String("ip", c.ClientIP()),
+		zap.String("user_agent", c.Request.UserAgent()),
+	)
+	c.JSON(http.StatusOK, gin.H{
+		"message": "pong",
+	})
+}
 
 func main() {
 	// Load environment variables from .env file
@@ -62,16 +108,19 @@ func main() {
 	// Connect to database
 	database.ConnectDatabase()
 
-	// Example route
-	r.GET("/ping", func(c *gin.Context) {
-		logger.Info("Ping endpoint called",
-			zap.String("ip", c.ClientIP()),
-			zap.String("user_agent", c.Request.UserAgent()),
-		)
-		c.JSON(http.StatusOK, gin.H{
-			"message": "pong",
-		})
-	})
+	defer database.Db.Close()
+
+	// Initialize Swagger docs
+	docs.SwaggerInfo.BasePath = "/api/v1"
+
+	// API v1 routes
+	v1 := r.Group("/api/v1")
+	{
+		v1.GET("/ping", pingHandler)
+	}
+
+	// Swagger endpoint
+	r.GET("/docs/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	logger.Info("Server starting",
 		zap.Int("port", port),

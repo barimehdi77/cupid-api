@@ -1,28 +1,22 @@
 package logger
 
 import (
-	"os"
 	"strings"
 
+	"github.com/barimehdi77/cupid-api/internal/env"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
 
 var Logger *zap.Logger
 
-// InitLogger initializes the global logger instance
+// InitLogger initializes the global logger instanceß
 func InitLogger() error {
 	// Get log level from environment (default: info)
-	logLevel := strings.ToLower(os.Getenv("LOG_LEVEL"))
-	if logLevel == "" {
-		logLevel = "info"
-	}
+	logLevel := strings.ToLower(env.GetEnvString("LOG_LEVEL", "info"))
 
 	// Get environment (development or production)
-	env := strings.ToLower(os.Getenv("GO_ENV"))
-	if env == "" {
-		env = "development"
-	}
+	env := strings.ToLower(env.GetEnvString("GO_ENV", "development"))
 
 	var config zap.Config
 	var err error
