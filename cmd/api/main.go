@@ -1,6 +1,6 @@
-// @title           Cupid API
+// @title           Cupid Hotel API
 // @version         1.0
-// @description     A dating application API built with Go and Gin
+// @description     A comprehensive hotel property API that fetches and serves hotel data from Cupid API with reviews, translations, and search capabilities
 // @termsOfService  http://swagger.io/terms/
 
 // @contact.name   API Support
@@ -17,13 +17,16 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 
+	"github.com/barimehdi77/cupid-api/internal/cupid"
 	"github.com/barimehdi77/cupid-api/internal/database"
 	"github.com/barimehdi77/cupid-api/internal/env"
 	"github.com/barimehdi77/cupid-api/internal/logger"
 	"github.com/barimehdi77/cupid-api/internal/store"
+	"github.com/barimehdi77/cupid-api/internal/sync"
 	"github.com/joho/godotenv"
 	"go.uber.org/zap"
 )
@@ -51,14 +54,27 @@ func main() {
 	// Initialize storage
 	storage := store.NewStorage(db)
 
+	// Create sync service
+	cupidService := cupid.NewService()
+	syncConfig := sync.DefaultConfig()
+	syncService := sync.NewSyncService(cupidService, storage, syncConfig)
+
 	// Create application instance with dependencies
 	app := &application{
 		config: config{
 			port: env.GetEnvInt("SERVER_PORT", 8080),
 			env:  env.GetEnvString("GO_ENV", "development"),
 		},
-		logger:  logger.Logger,
-		storage: storage,
+		logger:      logger.Logger,
+		storage:     storage,
+		syncService: syncService,
+	}
+
+	// Start the sync service
+	ctx := context.Background()
+	if err := app.syncService.Start(ctx); err != nil {
+		logger.LogError("Failed to start sync service", err)
+		// Don't exit, just log the error and continue
 	}
 
 	// Start the server

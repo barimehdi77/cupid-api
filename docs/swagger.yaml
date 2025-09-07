@@ -1,32 +1,493 @@
 basePath: /api/v1
+definitions:
+  api.APIResponse:
+    properties:
+      data: {}
+      error:
+        type: string
+      meta:
+        $ref: '#/definitions/api.Meta'
+      success:
+        type: boolean
+    type: object
+  api.AddressResponse:
+    properties:
+      address:
+        type: string
+      city:
+        type: string
+      country:
+        type: string
+      postal_code:
+        type: string
+      state:
+        type: string
+    type: object
+  api.HealthResponse:
+    properties:
+      database:
+        type: string
+      status:
+        type: string
+      timestamp:
+        type: string
+      version:
+        type: string
+    type: object
+  api.Meta:
+    properties:
+      has_next:
+        type: boolean
+      has_prev:
+        type: boolean
+      limit:
+        type: integer
+      page:
+        type: integer
+      total:
+        type: integer
+      total_pages:
+        type: integer
+    type: object
+  api.PropertyDetailsResponse:
+    properties:
+      address: {}
+      checkin: {}
+      contact_info: {}
+      facilities: {}
+      metadata: {}
+      photos: {}
+      policies: {}
+      rooms: {}
+    type: object
+  api.PropertyResponse:
+    properties:
+      address:
+        $ref: '#/definitions/api.AddressResponse'
+      airport_code:
+        type: string
+      chain:
+        type: string
+      created_at:
+        type: string
+      cupid_id:
+        type: integer
+      details:
+        $ref: '#/definitions/api.PropertyDetailsResponse'
+      hotel_id:
+        type: integer
+      hotel_name:
+        type: string
+      hotel_type:
+        type: string
+      latitude:
+        type: number
+      longitude:
+        type: number
+      main_image_th:
+        type: string
+      rating:
+        type: number
+      review_count:
+        type: integer
+      stars:
+        type: integer
+      updated_at:
+        type: string
+    type: object
+  api.PropertyWithDetailsResponse:
+    properties:
+      property:
+        $ref: '#/definitions/api.PropertyResponse'
+      reviews:
+        items:
+          $ref: '#/definitions/api.ReviewResponse'
+        type: array
+      translations:
+        additionalProperties:
+          $ref: '#/definitions/api.TranslationResponse'
+        type: object
+    type: object
+  api.ReviewResponse:
+    properties:
+      average_score:
+        type: integer
+      cons:
+        type: string
+      country:
+        type: string
+      created_at:
+        type: string
+      date:
+        type: string
+      headline:
+        type: string
+      id:
+        type: integer
+      language:
+        type: string
+      name:
+        type: string
+      pros:
+        type: string
+      review_id:
+        type: integer
+      source:
+        type: string
+      type:
+        type: string
+    type: object
+  api.TranslationResponse:
+    properties:
+      created_at:
+        type: string
+      description:
+        type: string
+      hotel_name:
+        type: string
+      important_info:
+        type: string
+      language:
+        type: string
+      markdown_description:
+        type: string
+      updated_at:
+        type: string
+    type: object
 host: localhost:8080
 info:
   contact:
     email: support@swagger.io
     name: API Support
     url: http://www.swagger.io/support
-  description: A dating application API built with Go and Gin
+  description: A comprehensive hotel property API that fetches and serves hotel data
+    from Cupid API with reviews, translations, and search capabilities
   license:
     name: Apache 2.0
     url: http://www.apache.org/licenses/LICENSE-2.0.html
   termsOfService: http://swagger.io/terms/
-  title: Cupid API
+  title: Cupid Hotel API
   version: "1.0"
 paths:
   /health:
     get:
-      description: Returns a simple health status and environment info
+      consumes:
+      - application/json
+      description: Check if the API is running and database is connected
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            additionalProperties: true
-            type: object
-      summary: Show the health status of the service
+            allOf:
+            - $ref: '#/definitions/api.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/api.HealthResponse'
+              type: object
+      summary: Health check
       tags:
       - health
+  /properties:
+    get:
+      consumes:
+      - application/json
+      description: Get a paginated list of properties with optional filtering
+      parameters:
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Items per page
+        in: query
+        name: limit
+        type: integer
+      - description: Filter by city
+        in: query
+        name: city
+        type: string
+      - description: Filter by country
+        in: query
+        name: country
+        type: string
+      - description: Minimum stars
+        in: query
+        maximum: 5
+        minimum: 1
+        name: min_stars
+        type: integer
+      - description: Maximum stars
+        in: query
+        maximum: 5
+        minimum: 1
+        name: max_stars
+        type: integer
+      - description: Minimum rating
+        in: query
+        maximum: 10
+        minimum: 0
+        name: min_rating
+        type: number
+      - description: Maximum rating
+        in: query
+        maximum: 10
+        minimum: 0
+        name: max_rating
+        type: number
+      - description: Filter by hotel type
+        in: query
+        name: hotel_type
+        type: string
+      - description: Filter by chain
+        in: query
+        name: chain
+        type: string
+      - description: Search in hotel name, city, country
+        in: query
+        name: search
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/api.PropertyResponse'
+                  type: array
+                meta:
+                  $ref: '#/definitions/api.Meta'
+              type: object
+      summary: List properties
+      tags:
+      - properties
+  /properties/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Get detailed information about a specific property including reviews
+        and translations
+      parameters:
+      - description: Property ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/api.PropertyWithDetailsResponse'
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.APIResponse'
+      summary: Get property by ID
+      tags:
+      - properties
+  /properties/{id}/reviews:
+    get:
+      consumes:
+      - application/json
+      description: Get all reviews for a specific property
+      parameters:
+      - description: Property ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/api.ReviewResponse'
+                  type: array
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.APIResponse'
+      summary: Get property reviews
+      tags:
+      - properties
+  /properties/{id}/translations:
+    get:
+      consumes:
+      - application/json
+      description: Get all translations for a specific property
+      parameters:
+      - description: Property ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.APIResponse'
+            - properties:
+                data:
+                  additionalProperties:
+                    $ref: '#/definitions/api.TranslationResponse'
+                  type: object
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.APIResponse'
+      summary: Get property translations
+      tags:
+      - properties
+  /properties/location:
+    get:
+      consumes:
+      - application/json
+      description: Get properties filtered by city and/or country
+      parameters:
+      - description: City name
+        in: query
+        name: city
+        type: string
+      - description: Country name
+        in: query
+        name: country
+        type: string
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Items per page
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/api.PropertyResponse'
+                  type: array
+                meta:
+                  $ref: '#/definitions/api.Meta'
+              type: object
+      summary: Get properties by location
+      tags:
+      - properties
+  /properties/rating:
+    get:
+      consumes:
+      - application/json
+      description: Get properties with a minimum rating
+      parameters:
+      - description: Minimum rating
+        in: query
+        maximum: 10
+        minimum: 0
+        name: min_rating
+        required: true
+        type: number
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Items per page
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/api.PropertyResponse'
+                  type: array
+                meta:
+                  $ref: '#/definitions/api.Meta'
+              type: object
+      summary: Get properties by rating
+      tags:
+      - properties
+  /search:
+    get:
+      consumes:
+      - application/json
+      description: Search properties by name, city, or country
+      parameters:
+      - description: Search query
+        in: query
+        name: q
+        required: true
+        type: string
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Items per page
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/api.PropertyResponse'
+                  type: array
+                meta:
+                  $ref: '#/definitions/api.Meta'
+              type: object
+      summary: Search properties
+      tags:
+      - search
 securityDefinitions:
   BasicAuth:
     type: basic

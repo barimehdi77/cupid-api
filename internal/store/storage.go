@@ -13,6 +13,7 @@ type Storage interface {
 	StoreProperty(ctx context.Context, propertyData *cupid.PropertyData) error
 	GetProperty(ctx context.Context, hotelID int64) (*cupid.PropertyData, error)
 	ListProperties(ctx context.Context, limit, offset int, filters PropertyFilters) ([]*cupid.Property, error)
+	CountProperties(ctx context.Context, filters PropertyFilters) (int, error)
 	UpdateProperty(ctx context.Context, hotelID int64, propertyData *cupid.PropertyData) error
 	DeleteProperty(ctx context.Context, hotelID int64) error
 
@@ -26,8 +27,11 @@ type Storage interface {
 
 	// Search operations
 	SearchProperties(ctx context.Context, query string, limit, offset int) ([]*cupid.Property, error)
+	CountSearchProperties(ctx context.Context, query string) (int, error)
 	GetPropertiesByLocation(ctx context.Context, city, country string, limit, offset int) ([]*cupid.Property, error)
+	CountPropertiesByLocation(ctx context.Context, city, country string) (int, error)
 	GetPropertiesByRating(ctx context.Context, minRating float64, limit, offset int) ([]*cupid.Property, error)
+	CountPropertiesByRating(ctx context.Context, minRating float64) (int, error)
 }
 
 // PropertyFilters contains filtering options for property queries

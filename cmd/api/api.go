@@ -11,8 +11,10 @@ import (
 	"time"
 
 	"github.com/barimehdi77/cupid-api/docs"
+	"github.com/barimehdi77/cupid-api/internal/api"
 	"github.com/barimehdi77/cupid-api/internal/logger"
 	"github.com/barimehdi77/cupid-api/internal/store"
+	"github.com/barimehdi77/cupid-api/internal/sync"
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
@@ -20,9 +22,11 @@ import (
 )
 
 type application struct {
-	config  config
-	logger  *zap.Logger
-	storage store.Storage
+	config      config
+	logger      *zap.Logger
+	storage     store.Storage
+	handlers    *api.Handlers
+	syncService *sync.SyncService
 }
 
 type config struct {
@@ -47,11 +51,41 @@ func (app *application) mount() *gin.Engine {
 	// Initialize Swagger docs
 	docs.SwaggerInfo.BasePath = "/api/v1"
 
+	// Create handlers
+	app.handlers = api.NewHandlers(app.storage)
+
 	// API v1 routes
 	v1 := r.Group("/api/v1")
 	{
 		// Health check routes
-		v1.GET("/health", app.healthcheckHandler)
+		v1.GET("/health", app.handlers.HealthCheckHandler)
+
+		// Property routes
+		v1.GET("/properties", app.handlers.ListPropertiesHandler)
+		v1.GET("/properties/:id", app.handlers.GetPropertyHandler)
+		v1.GET("/properties/:id/reviews", app.handlers.GetPropertyReviewsHandler)
+		v1.GET("/properties/:id/translations", app.handlers.GetPropertyTranslationsHandler)
+		v1.GET("/properties/location", app.handlers.GetPropertiesByLocationHandler)
+		v1.GET("/properties/rating", app.handlers.GetPropertiesByRatingHandler)
+
+		// Search routes
+		v1.GET("/search", app.handlers.SearchPropertiesHandler)
+
+		// Admin sync routes (only if sync service is available)
+		if app.syncService != nil {
+			syncHandlers := api.NewSyncHandlers(app.syncService)
+			admin := v1.Group("/admin")
+			{
+				admin.POST("/sync", syncHandlers.TriggerSyncHandler)
+				admin.GET("/sync/status", syncHandlers.GetSyncStatusHandler)
+				admin.POST("/sync/start", syncHandlers.StartSyncHandler)
+				admin.POST("/sync/stop", syncHandlers.StopSyncHandler)
+				admin.GET("/sync/logs", syncHandlers.GetSyncLogsHandler)
+				admin.GET("/sync/settings", syncHandlers.GetSyncSettingsHandler)
+				admin.PUT("/sync/settings", syncHandlers.UpdateSyncSettingsHandler)
+				admin.GET("/sync/health", syncHandlers.GetSyncHealthHandler)
+			}
+		}
 	}
 
 	// Swagger endpoint

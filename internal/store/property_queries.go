@@ -151,6 +151,70 @@ func (s *storage) ListProperties(ctx context.Context, limit, offset int, filters
 	return properties, nil
 }
 
+// CountProperties counts the total number of properties matching the given filters
+func (s *storage) CountProperties(ctx context.Context, filters PropertyFilters) (int, error) {
+	query := "SELECT COUNT(*) FROM properties WHERE 1=1"
+	args := []interface{}{}
+	argIndex := 1
+
+	// Add filters
+	if filters.City != "" {
+		query += fmt.Sprintf(" AND city ILIKE $%d", argIndex)
+		args = append(args, "%"+filters.City+"%")
+		argIndex++
+	}
+
+	if filters.Country != "" {
+		query += fmt.Sprintf(" AND country ILIKE $%d", argIndex)
+		args = append(args, "%"+filters.Country+"%")
+		argIndex++
+	}
+
+	if filters.MinStars > 0 {
+		query += fmt.Sprintf(" AND stars >= $%d", argIndex)
+		args = append(args, filters.MinStars)
+		argIndex++
+	}
+
+	if filters.MaxStars > 0 {
+		query += fmt.Sprintf(" AND stars <= $%d", argIndex)
+		args = append(args, filters.MaxStars)
+		argIndex++
+	}
+
+	if filters.MinRating > 0 {
+		query += fmt.Sprintf(" AND rating >= $%d", argIndex)
+		args = append(args, filters.MinRating)
+		argIndex++
+	}
+
+	if filters.MaxRating > 0 {
+		query += fmt.Sprintf(" AND rating <= $%d", argIndex)
+		args = append(args, filters.MaxRating)
+		argIndex++
+	}
+
+	if filters.HotelType != "" {
+		query += fmt.Sprintf(" AND hotel_type ILIKE $%d", argIndex)
+		args = append(args, "%"+filters.HotelType+"%")
+		argIndex++
+	}
+
+	if filters.Chain != "" {
+		query += fmt.Sprintf(" AND chain ILIKE $%d", argIndex)
+		args = append(args, "%"+filters.Chain+"%")
+		argIndex++
+	}
+
+	var count int
+	err := s.db.QueryRowContext(ctx, query, args...).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("failed to count properties: %w", err)
+	}
+
+	return count, nil
+}
+
 // GetPropertyReviews retrieves reviews for a specific property
 func (s *storage) GetPropertyReviews(ctx context.Context, hotelID int64) ([]cupid.Review, error) {
 	query := `

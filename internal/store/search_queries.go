@@ -102,6 +102,65 @@ func (s *storage) SearchProperties(ctx context.Context, query string, limit, off
 	return properties, nil
 }
 
+// CountSearchProperties counts the total number of properties matching the search query
+func (s *storage) CountSearchProperties(ctx context.Context, query string) (int, error) {
+	sqlQuery := `
+		SELECT COUNT(*) 
+		FROM properties 
+		WHERE hotel_name ILIKE $1 
+		   OR city ILIKE $1 
+		   OR country ILIKE $1
+	`
+
+	var count int
+	err := s.db.QueryRowContext(ctx, sqlQuery, "%"+query+"%").Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("failed to count search properties: %w", err)
+	}
+
+	return count, nil
+}
+
+// CountPropertiesByLocation counts properties by location
+func (s *storage) CountPropertiesByLocation(ctx context.Context, city, country string) (int, error) {
+	query := "SELECT COUNT(*) FROM properties WHERE 1=1"
+	args := []interface{}{}
+	argIndex := 1
+
+	if city != "" {
+		query += fmt.Sprintf(" AND city ILIKE $%d", argIndex)
+		args = append(args, "%"+city+"%")
+		argIndex++
+	}
+
+	if country != "" {
+		query += fmt.Sprintf(" AND country ILIKE $%d", argIndex)
+		args = append(args, "%"+country+"%")
+		argIndex++
+	}
+
+	var count int
+	err := s.db.QueryRowContext(ctx, query, args...).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("failed to count properties by location: %w", err)
+	}
+
+	return count, nil
+}
+
+// CountPropertiesByRating counts properties by minimum rating
+func (s *storage) CountPropertiesByRating(ctx context.Context, minRating float64) (int, error) {
+	query := "SELECT COUNT(*) FROM properties WHERE rating >= $1"
+
+	var count int
+	err := s.db.QueryRowContext(ctx, query, minRating).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("failed to count properties by rating: %w", err)
+	}
+
+	return count, nil
+}
+
 // GetPropertiesByLocation retrieves properties by location
 func (s *storage) GetPropertiesByLocation(ctx context.Context, city, country string, limit, offset int) ([]*cupid.Property, error) {
 	filters := PropertyFilters{
