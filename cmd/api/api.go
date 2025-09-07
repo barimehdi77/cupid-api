@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/barimehdi77/cupid-api/docs"
+	"github.com/barimehdi77/cupid-api/internal/logger"
 	"github.com/barimehdi77/cupid-api/internal/store"
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
@@ -21,7 +22,7 @@ import (
 type application struct {
 	config  config
 	logger  *zap.Logger
-	storage *store.Storage
+	storage store.Storage
 }
 
 type config struct {
@@ -39,21 +40,18 @@ func (app *application) mount() *gin.Engine {
 	// Create Gin engine without default middleware
 	r := gin.New()
 
-	// Add custom middleware
-	r.Use(app.ginLogger())   // Custom logger middleware
-	r.Use(app.ginRecovery()) // Custom recovery middleware
+	// Add enhanced logging middleware
+	r.Use(logger.GinMiddleware())         // Enhanced HTTP request logging
+	r.Use(logger.GinRecoveryMiddleware()) // Enhanced panic recovery logging
 
 	// Initialize Swagger docs
 	docs.SwaggerInfo.BasePath = "/api/v1"
 
-	// Health check routes
-	r.GET("/health", app.healthHandler)
-
 	// API v1 routes
 	v1 := r.Group("/api/v1")
 	{
-		v1.GET("/ping", app.pingHandler)
-		// Add more routes here as your API grows
+		// Health check routes
+		v1.GET("/health", app.healthcheckHandler)
 	}
 
 	// Swagger endpoint
@@ -82,19 +80,19 @@ func (app *application) run() error {
 
 	// Start server in a goroutine
 	go func() {
-		app.logger.Info("Server starting",
+		logger.LogStartup("HTTP Server",
 			zap.Int("port", app.config.port),
 			zap.String("environment", app.config.env),
 		)
 
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			app.logger.Fatal("Server failed to start", zap.Error(err))
+			logger.LogError("Server startup", err)
 		}
 	}()
 
 	// Wait for interrupt signal
 	<-shutdown
-	app.logger.Info("Shutting down server gracefully...")
+	logger.LogShutdown("HTTP Server", zap.String("reason", "interrupt signal received"))
 
 	// Create context with timeout for graceful shutdown
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -102,48 +100,10 @@ func (app *application) run() error {
 
 	// Shutdown server
 	if err := srv.Shutdown(ctx); err != nil {
-		app.logger.Error("Server forced to shutdown", zap.Error(err))
+		logger.LogError("Graceful shutdown", err)
 		return err
 	}
 
-	app.logger.Info("Server stopped")
+	logger.LogSuccess("Server shutdown")
 	return nil
-}
-
-// Handler methods (receiver functions on app)
-func (app *application) healthHandler(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{
-		"status": "ok",
-		"info": gin.H{
-			"environment": app.config.env,
-		},
-	})
-}
-
-func (app *application) pingHandler(c *gin.Context) {
-	app.logger.Info("Ping endpoint called",
-		zap.String("ip", c.ClientIP()),
-		zap.String("user_agent", c.Request.UserAgent()),
-	)
-	c.JSON(http.StatusOK, gin.H{
-		"message": "pong",
-	})
-}
-
-// Custom middleware methods
-func (app *application) ginLogger() gin.HandlerFunc {
-	return gin.LoggerWithWriter(gin.DefaultWriter)
-	// You can customize this to use your zap logger
-}
-
-func (app *application) ginRecovery() gin.HandlerFunc {
-	return gin.CustomRecovery(func(c *gin.Context, recovered interface{}) {
-		app.logger.Error("Panic recovered",
-			zap.String("method", c.Request.Method),
-			zap.String("path", c.Request.URL.Path),
-			zap.String("ip", c.ClientIP()),
-			zap.Any("panic", recovered),
-		)
-		c.AbortWithStatus(http.StatusInternalServerError)
-	})
 }

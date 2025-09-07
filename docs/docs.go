@@ -24,37 +24,24 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/ping": {
+        "/health": {
             "get": {
-                "description": "Health check endpoint that returns pong",
-                "consumes": [
-                    "application/json"
-                ],
+                "description": "Returns a simple health status and environment info",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "health"
                 ],
-                "summary": "Ping endpoint",
+                "summary": "Show the health status of the service",
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/main.PingResponse"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
-                }
-            }
-        }
-    },
-    "definitions": {
-        "main.PingResponse": {
-            "type": "object",
-            "properties": {
-                "message": {
-                    "type": "string",
-                    "example": "pong"
                 }
             }
         }
@@ -63,10 +50,6 @@ const docTemplate = `{
         "BasicAuth": {
             "type": "basic"
         }
-    },
-    "externalDocs": {
-        "description": "OpenAPI",
-        "url": "https://swagger.io/resources/open-api/"
     }
 }`
 

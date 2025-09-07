@@ -1,14 +1,4 @@
 basePath: /api/v1
-definitions:
-  main.PingResponse:
-    properties:
-      message:
-        example: pong
-        type: string
-    type: object
-externalDocs:
-  description: OpenAPI
-  url: https://swagger.io/resources/open-api/
 host: localhost:8080
 info:
   contact:
@@ -23,19 +13,18 @@ info:
   title: Cupid API
   version: "1.0"
 paths:
-  /ping:
+  /health:
     get:
-      consumes:
-      - application/json
-      description: Health check endpoint that returns pong
+      description: Returns a simple health status and environment info
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/main.PingResponse'
-      summary: Ping endpoint
+            additionalProperties: true
+            type: object
+      summary: Show the health status of the service
       tags:
       - health
 securityDefinitions:

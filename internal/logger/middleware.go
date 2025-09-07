@@ -5,10 +5,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 )
 
-// GinMiddleware returns a Gin middleware that logs HTTP requests using Zap
+// GinMiddleware returns a Gin middleware that logs HTTP requests using enhanced Zap logging
 func GinMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()
@@ -21,7 +20,7 @@ func GinMiddleware() gin.HandlerFunc {
 		// Calculate latency
 		latency := time.Since(start)
 
-		// Get client IP
+		// Get request details
 		clientIP := c.ClientIP()
 		method := c.Request.Method
 		statusCode := c.Writer.Status()
@@ -32,26 +31,15 @@ func GinMiddleware() gin.HandlerFunc {
 			path = path + "?" + raw
 		}
 
-		// Choose log level based on status code
-		var logLevel zapcore.Level
-		switch {
-		case statusCode >= 500:
-			logLevel = zap.ErrorLevel
-		case statusCode >= 400:
-			logLevel = zap.WarnLevel
-		default:
-			logLevel = zap.InfoLevel
+		// Prepare additional fields
+		fields := []zap.Field{
+			zap.String("ip", clientIP),
+			zap.Int("size", bodySize),
 		}
 
-		// Create log fields
-		fields := []zap.Field{
-			zap.String("method", method),
-			zap.String("path", path),
-			zap.Int("status", statusCode),
-			zap.String("ip", clientIP),
-			zap.Duration("latency", latency),
-			zap.String("user_agent", userAgent),
-			zap.Int("body_size", bodySize),
+		// Add user agent for non-health checks
+		if path != "/health" && path != "/ping" {
+			fields = append(fields, zap.String("user_agent", userAgent))
 		}
 
 		// Add error field if there are any errors
@@ -59,26 +47,21 @@ func GinMiddleware() gin.HandlerFunc {
 			fields = append(fields, zap.String("errors", c.Errors.String()))
 		}
 
-		// Log the request
-		switch logLevel {
-		case zap.ErrorLevel:
-			Logger.Error("HTTP Request", fields...)
-		case zap.WarnLevel:
-			Logger.Warn("HTTP Request", fields...)
-		default:
-			Logger.Info("HTTP Request", fields...)
-		}
+		// Use the enhanced LogRequest function
+		LogRequest(method, path, statusCode, latency, fields...)
 	}
 }
 
-// GinRecoveryMiddleware returns a recovery middleware that logs panics using Zap
+// GinRecoveryMiddleware returns a recovery middleware that logs panics using enhanced Zap logging
 func GinRecoveryMiddleware() gin.HandlerFunc {
 	return gin.CustomRecovery(func(c *gin.Context, recovered interface{}) {
-		Logger.Error("Panic recovered",
+		Logger.Error("💥 Panic recovered - server error",
 			zap.String("method", c.Request.Method),
 			zap.String("path", c.Request.URL.Path),
 			zap.String("ip", c.ClientIP()),
-			zap.Any("panic", recovered),
+			zap.String("user_agent", c.Request.UserAgent()),
+			zap.Any("panic_value", recovered),
+			zap.String("recovery_action", "returning 500 status"),
 		)
 		c.AbortWithStatus(500)
 	})
