@@ -14,7 +14,7 @@ This document explains how to run the Cupid API using Docker and Docker Compose.
 Copy the example environment file and set your API key:
 
 ```bash
-cp integration.env.example docker.env
+cp docker.env.example docker.env
 ```
 
 Edit `docker.env` and set your `CUPID_API_KEY`:

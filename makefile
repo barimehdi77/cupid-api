@@ -218,7 +218,11 @@ db-setup: ## Create database if it doesn't exist
 
 fetch-data: ## Fetch all hotel data from Cupid API
 	@echo "Fetching hotel data from Cupid API..."
-	go run ./cmd/fetch/main.go
+	@if [ -f "./fetch" ]; then \
+		./fetch; \
+	else \
+		go run ./cmd/fetch/main.go; \
+	fi
 	@echo "✅ Data fetching completed"
 
 docker-build: ## Build Docker image
