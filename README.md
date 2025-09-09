@@ -46,7 +46,7 @@ The Cupid Hotel API is a robust microservice that:
 
 4. **Access the API**:
    - API: <http://localhost:8080/api/v1>
-   - Swagger UI: <http://localhost:8080/swagger/index.html>
+   - Swagger UI: <http://localhost:8080/docs/index.html>
    - Health Check: <http://localhost:8080/api/v1/health>
 
 ### Option 2: Local Development
@@ -201,6 +201,88 @@ cupid-api/
 └── makefile              # Development commands
 ```
 
+## ��️ Database Schema
+
+```mermaid
+erDiagram
+    PROPERTIES {
+        bigint hotel_id PK
+        bigint cupid_id
+        varchar hotel_name
+        varchar hotel_type
+        int hotel_type_id
+        varchar chain
+        int chain_id
+        decimal latitude
+        decimal longitude
+        int stars
+        decimal rating
+        int review_count
+        varchar airport_code
+        varchar city
+        varchar state
+        varchar country
+        varchar postal_code
+        text main_image_th
+        timestamp created_at
+        timestamp updated_at
+    }
+    
+    REVIEWS {
+        serial id PK
+        bigint property_id FK
+        bigint review_id
+        int average_score
+        varchar country
+        varchar type
+        varchar name
+        date date
+        text headline
+        varchar language
+        text pros
+        text cons
+        varchar source
+        timestamp created_at
+    }
+    
+    TRANSLATIONS {
+        serial id PK
+        bigint property_id FK
+        varchar language
+        varchar hotel_name
+        text description
+        text markdown_description
+        text important_info
+        timestamp created_at
+        timestamp updated_at
+    }
+    
+    PROPERTY_DETAILS {
+        bigint property_id PK,FK
+        jsonb address
+        jsonb checkin_info
+        jsonb facilities
+        jsonb policies
+        jsonb rooms
+        jsonb photos
+        jsonb contact_info
+        jsonb metadata
+        timestamp created_at
+        timestamp updated_at
+    }
+    
+    PROPERTIES ||--o{ REVIEWS : "has many"
+    PROPERTIES ||--o{ TRANSLATIONS : "has many"
+    PROPERTIES ||--|| PROPERTY_DETAILS : "has one"
+```
+
+### Schema Design Principles
+
+- **Normalized Structure**: Fast queries with proper indexing
+- **JSONB Storage**: Flexible complex data storage
+- **Foreign Key Constraints**: Data integrity
+- **Comprehensive Indexing**: Optimized for common queries
+
 ## 🧪 Testing
 
 ### Integration Tests
@@ -250,7 +332,7 @@ For detailed Docker information, see [Docker Setup Guide](READMEs/DOCKER_README.
 - **[Docker Setup](READMEs/DOCKER_README.md)** - Docker deployment guide
 - **[Integration Tests](READMEs/INTEGRATION_TESTS.md)** - Testing documentation
 - **[Sync System](READMEs/SYNC_README.md)** - Data synchronization guide
-- **[API Documentation](http://localhost:8080/swagger/index.html)** - Interactive Swagger UI
+- **[API Documentation](http://localhost:8080/docs/index.html)** - Interactive Swagger UI
 
 ## 🤝 Contributing
 
@@ -266,7 +348,7 @@ This project is licensed under the Apache 2.0 License - see the [LICENSE](LICENS
 
 ## 🆘 Support
 
-- **API Documentation**: <http://localhost:8080/swagger/index.html>
+- **API Documentation**: <http://localhost:8080/docs/index.html>
 - **Health Check**: <http://localhost:8080/api/v1/health>
 - **Issues**: Please use GitHub Issues for bug reports and feature requests
 

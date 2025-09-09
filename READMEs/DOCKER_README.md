@@ -47,6 +47,7 @@ docker-compose run --rm fetch-data
 The Docker setup includes the following services:
 
 ### PostgreSQL Database
+
 - **Container**: `cupid-postgres`
 - **Port**: `5432`
 - **Database**: `cupid`
@@ -54,12 +55,14 @@ The Docker setup includes the following services:
 - **Password**: `root`
 
 ### Cupid API
+
 - **Container**: `cupid-api`
 - **Port**: `8080`
 - **Health Check**: `http://localhost:8080/health`
-- **Swagger UI**: `http://localhost:8080/swagger/index.html`
+- **Swagger UI**: `http://localhost:8080/docs/index.html`
 
 ### Data Fetcher
+
 - **Container**: `cupid-fetch-data` (runs on demand)
 - **Purpose**: Fetches hotel data from Cupid API and stores it in PostgreSQL
 
@@ -82,16 +85,19 @@ The following environment variables can be configured in `docker.env`:
 ## Management Commands
 
 ### Start Services
+
 ```bash
 docker-compose up -d
 ```
 
 ### Stop Services
+
 ```bash
 docker-compose down
 ```
 
 ### View Logs
+
 ```bash
 # All services
 docker-compose logs -f
@@ -102,21 +108,25 @@ docker-compose logs -f postgres
 ```
 
 ### Fetch New Data
+
 ```bash
 docker-compose run --rm fetch-data
 ```
 
 ### Restart Services
+
 ```bash
 docker-compose restart
 ```
 
 ### Rebuild and Start
+
 ```bash
 docker-compose up --build -d
 ```
 
 ### Access Database
+
 ```bash
 # Connect to PostgreSQL
 docker-compose exec postgres psql -U root -d cupid
@@ -126,6 +136,7 @@ psql -h localhost -p 5432 -U root -d cupid
 ```
 
 ### Access API Container
+
 ```bash
 docker-compose exec api sh
 ```
@@ -146,20 +157,24 @@ Both services include health checks:
 ## Troubleshooting
 
 ### Services Won't Start
+
 1. Check if Docker is running: `docker info`
 2. Check logs: `docker-compose logs`
 3. Ensure port 8080 and 5432 are not in use
 
 ### API Key Issues
+
 1. Verify your API key in `docker.env`
 2. Check if the key is valid by testing the Cupid API directly
 
 ### Database Connection Issues
+
 1. Wait for PostgreSQL to be ready (health check)
 2. Check database logs: `docker-compose logs postgres`
 3. Verify database credentials in `docker.env`
 
 ### Data Fetching Issues
+
 1. Check API logs: `docker-compose logs api`
 2. Verify Cupid API connectivity
 3. Check fetch-data logs: `docker-compose logs fetch-data`
@@ -167,6 +182,7 @@ Both services include health checks:
 ## Development
 
 ### Local Development with Docker
+
 ```bash
 # Start only the database
 docker-compose up postgres -d
@@ -176,6 +192,7 @@ make dev
 ```
 
 ### Testing
+
 ```bash
 # Run tests in container
 docker-compose exec api go test ./...
@@ -221,6 +238,7 @@ Once running, the API provides:
 ## Support
 
 For issues or questions:
+
 1. Check the logs: `docker-compose logs`
 2. Verify configuration in `docker.env`
 3. Test individual components
